@@ -12,4 +12,4 @@ homepage = "https://github.com/jelmer/dirty-tracker-rs"
 inotify = "0.10"
 
 [dev-dependencies]
-tempfile = "*"
+tempfile = "3"

@@ -1,0 +1,15 @@
+[package]
+name = "dirty-tracker"
+version = "0.1.0"
+authors = ["Jelmer Vernooĳ <jelmer@jelmer.uk>"]
+edition = "2018"
+description = "Track which files have changed"
+license = "Apache-2.0"
+repository = "https://github.com/jelmer/dirty-tracker-rs.git"
+homepage = "https://github.com/jelmer/dirty-tracker-rs"
+
+[dependencies]
+inotify = "0.10"
+
+[dev-dependencies]
+tempfile = "*"

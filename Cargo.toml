@@ -1,6 +1,6 @@
 [package]
 name = "dirty-tracker"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Jelmer Vernooĳ <jelmer@jelmer.uk>"]
 edition = "2018"
 description = "Track which files have changed"

@@ -1,4 +1,4 @@
-# Opportunistic dirty file tracker.
+# Opportunistic dirty file tracker
 
 This library provides a simple way to track dirty files in a directory.
 It uses the `notify` crate to watch for file system events and keep track

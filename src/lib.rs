@@ -330,6 +330,10 @@ mod tests {
         f.sync_all().unwrap();
         wait_for(&mut tracker, &maplit::hashset![file.clone()], State::Dirty);
         assert_eq!(tracker.paths(), Some(&maplit::hashset![file.clone()]));
+        assert_eq!(
+            tracker.relpaths(),
+            Some(maplit::hashset![Path::new("file")])
+        );
         assert_eq!(tracker.state(), State::Dirty);
     }
 
@@ -348,6 +352,10 @@ mod tests {
 
         wait_for(&mut tracker, &maplit::hashset![file.clone()], State::Dirty);
         assert_eq!(tracker.paths(), Some(&maplit::hashset![file.clone()]));
+        assert_eq!(
+            tracker.relpaths(),
+            Some(maplit::hashset![Path::new("file")])
+        );
         assert_eq!(tracker.state(), State::Dirty);
     }
 
@@ -366,6 +374,10 @@ mod tests {
 
         wait_for(&mut tracker, &maplit::hashset![file.clone()], State::Dirty);
         assert_eq!(tracker.paths(), Some(&maplit::hashset![file.clone()]));
+        assert_eq!(
+            tracker.relpaths(),
+            Some(maplit::hashset![Path::new("file")])
+        );
         assert_eq!(tracker.state(), State::Dirty);
     }
 
@@ -494,6 +506,27 @@ mod tests {
             tracker.paths(),
             Some(&maplit::hashset![subdir.clone(), file.clone()])
         );
+        assert_eq!(tracker.state(), State::Dirty);
+    }
+
+    #[test]
+    fn test_many_added() {
+        let dir = tempdir().unwrap();
+
+        let mut tracker = DirtyTracker::new(dir.path()).unwrap();
+        assert_eq!(tracker.state(), State::Clean);
+        assert!(tracker.paths().unwrap().is_empty());
+
+        let mut expected_paths = HashSet::new();
+
+        for i in 0..100 {
+            let file = dir.path().join(format!("file{}", i));
+            std::fs::write(&file, b"hello").unwrap();
+            expected_paths.insert(file.clone());
+        }
+
+        wait_for(&mut tracker, &expected_paths, State::Dirty);
+        assert_eq!(tracker.paths(), Some(&expected_paths));
         assert_eq!(tracker.state(), State::Dirty);
     }
 }

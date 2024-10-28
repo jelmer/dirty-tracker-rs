@@ -9,7 +9,7 @@ repository = "https://github.com/jelmer/dirty-tracker-rs.git"
 homepage = "https://github.com/jelmer/dirty-tracker-rs"
 
 [dependencies]
-notify = "6"
+notify = "7"
 tempfile = "3"
 
 [dev-dependencies]

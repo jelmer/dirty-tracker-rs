@@ -1,7 +1,7 @@
 # Opportunistic dirty file tracker
 
 This library provides a simple way to track dirty files in a directory.
-It uses the `notify` crate to watch for file system events and keep track
+It uses the `notify` create to watch for file system events and keep track
 of the files that have been modified.
 
 If the underlying file system does not support watching for file system events,

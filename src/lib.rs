@@ -534,4 +534,34 @@ mod tests {
         assert_eq!(tracker.paths(), Some(&expected_paths));
         assert_eq!(tracker.state(), State::Dirty);
     }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_is_dirty_deprecated() {
+        let dir = tempdir().unwrap();
+        let mut tracker = DirtyTracker::new(dir.path()).unwrap();
+        
+        // Test clean state
+        assert!(!tracker.is_dirty());
+        
+        // Create a file to make it dirty
+        let file = dir.path().join("file");
+        std::fs::write(&file, b"hello").unwrap();
+        
+        wait_for(&mut tracker, &maplit::hashset![file.clone()], State::Dirty);
+        
+        // Test dirty state
+        assert!(tracker.is_dirty());
+    }
+
+    #[test]
+    fn test_process_error_display() {
+        use std::time::Duration;
+        
+        let timeout_error = ProcessError::Timeout(Duration::from_secs(5));
+        assert_eq!(timeout_error.to_string(), "Timeout after 5s");
+        
+        let disconnected_error = ProcessError::Disconnected;
+        assert_eq!(disconnected_error.to_string(), "Channel disconnected");
+    }
 }

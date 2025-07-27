@@ -41,8 +41,8 @@ use std::sync::mpsc::{channel, Receiver, RecvError, RecvTimeoutError};
 /// - Clean: No files have been modified.
 /// - Dirty: Some files have been modified.
 /// - Unknown: The tracker is in an unknown state. This can happen if the
-///  tracker has missed some events, or if the underlying file system is
-///  behaving in an unexpected way.
+///   tracker has missed some events, or if the underlying file system is
+///   behaving in an unexpected way.
 pub struct DirtyTracker {
     path: PathBuf,
     rx: Receiver<notify::Result<Event>>,
@@ -67,10 +67,10 @@ pub enum ProcessError {
 }
 
 impl std::fmt::Display for ProcessError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ProcessError::Timeout(timeout) => write!(f, "Timeout: {:?}", timeout),
-            ProcessError::Disconnected => write!(f, "Disconnected"),
+            ProcessError::Timeout(timeout) => write!(f, "Timeout after {:?}", timeout),
+            ProcessError::Disconnected => f.write_str("Channel disconnected"),
         }
     }
 }
@@ -158,13 +158,19 @@ impl DirtyTracker {
     ///
     /// If the tracker is in an unknown state, this will return None.
     pub fn relpaths(&mut self) -> Option<HashSet<&Path>> {
-        let path = self.path.clone();
-        self.paths().as_mut().map(|paths| {
-            paths
-                .iter()
-                .map(|p| p.strip_prefix(&path).unwrap())
-                .collect()
-        })
+        if self.process_pending(None).is_err() {
+            return None;
+        }
+        if self.need_rescan {
+            None
+        } else {
+            Some(
+                self.paths
+                    .iter()
+                    .map(|p| p.strip_prefix(&self.path).unwrap())
+                    .collect(),
+            )
+        }
     }
 
     fn process_pending_event(&mut self, event: Event) {
@@ -178,8 +184,9 @@ impl DirtyTracker {
                 ..
             } => {
                 for path in paths {
-                    self.created.insert(path.clone());
-                    self.paths.insert(path);
+                    // Insert into paths first to take ownership, then clone for created set
+                    self.paths.insert(path.clone());
+                    self.created.insert(path);
                 }
             }
             Event {
@@ -201,7 +208,7 @@ impl DirtyTracker {
                         self.paths.remove(&path);
                         self.created.remove(&path);
                     } else {
-                        self.paths.insert(path.clone());
+                        self.paths.insert(path);
                     }
                 }
             }
@@ -224,11 +231,9 @@ impl DirtyTracker {
         // We can't just wait for a timeout, because we might miss events - and it would be
         // difficult to determine the correct timeout value. Performance is one of the main
         // reasons for using this library, so we don't want to wait for a long time.
-        let mut dummy = tempfile::NamedTempFile::new_in(&self.path).unwrap();
-        use std::io::Write;
-        dummy.write_all(b"dummy").unwrap();
+        let dummy = tempfile::NamedTempFile::new_in(&self.path).unwrap();
         let dummy_path = dummy.path().to_path_buf();
-        std::mem::drop(dummy);
+        drop(dummy);
 
         let is_sentinel_delete_event = |event: &notify::Event| {
             matches!(
@@ -296,12 +301,12 @@ mod tests {
         expected_state: State,
     ) {
         let state = tracker.state();
-        let paths = tracker.paths().unwrap().clone();
+        let paths = tracker.paths().unwrap();
         if state == State::Unknown {
             panic!("Unexpected unknown state");
         }
         assert_eq!(state, expected_state);
-        assert_eq!(paths, *expected_paths);
+        assert_eq!(paths, expected_paths);
     }
 
     #[test]
@@ -528,5 +533,35 @@ mod tests {
         wait_for(&mut tracker, &expected_paths, State::Dirty);
         assert_eq!(tracker.paths(), Some(&expected_paths));
         assert_eq!(tracker.state(), State::Dirty);
+    }
+
+    #[test]
+    #[allow(deprecated)]
+    fn test_is_dirty_deprecated() {
+        let dir = tempdir().unwrap();
+        let mut tracker = DirtyTracker::new(dir.path()).unwrap();
+        
+        // Test clean state
+        assert!(!tracker.is_dirty());
+        
+        // Create a file to make it dirty
+        let file = dir.path().join("file");
+        std::fs::write(&file, b"hello").unwrap();
+        
+        wait_for(&mut tracker, &maplit::hashset![file.clone()], State::Dirty);
+        
+        // Test dirty state
+        assert!(tracker.is_dirty());
+    }
+
+    #[test]
+    fn test_process_error_display() {
+        use std::time::Duration;
+        
+        let timeout_error = ProcessError::Timeout(Duration::from_secs(5));
+        assert_eq!(timeout_error.to_string(), "Timeout after 5s");
+        
+        let disconnected_error = ProcessError::Disconnected;
+        assert_eq!(disconnected_error.to_string(), "Channel disconnected");
     }
 }
